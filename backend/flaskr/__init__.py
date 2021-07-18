@@ -159,14 +159,14 @@ def create_app(test_config=None):
                 categories_dict[category.id] = category.type
             return jsonify({
                 'success': True,
-                'category': categories_dict,
+                'categories': categories_dict,
                 'total_categories': len(Category.query.all())
                 })
         except:
             abort(404)
         
         
-    @app.route('/questions/<int:ques_id>/remove', methods=['DELETE'])
+    @app.route('/questions/<int:ques_id>', methods=['DELETE'])
     def delete_question(ques_id):   
         '''
         Create an endpoint to DELETE question using a question ID.   
