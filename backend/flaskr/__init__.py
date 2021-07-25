@@ -41,19 +41,19 @@ def create_app(test_config=None):
         number of total questions, current category, categories.  
         '''
         
-        questions = Question.query.order_by(Question.id).all()
-        current_questions = paginate_questions(request, questions) 
-        if (len(current_questions) == 0):
+        all_ques = Question.query.order_by(Question.id).all()
+        current_questions_paginated = paginate_questions(request, all_ques) 
+        if (len(current_questions_paginated) == 0):
             abort(404)
         try:
-            categories = Category.query.all()    
+            all_categories = Category.query.all()    
             categories_dict = {}
-            for category in categories:
+            for category in all_categories:
                 categories_dict[category.id] = category.type
-              
+            
             return jsonify({
             'success': True,
-            'questions': current_questions,
+            'questions': current_questions_paginated,
             'total_questions': len(Question.query.all()),
             'categories': categories_dict,
             'current_category': None
@@ -68,29 +68,28 @@ def create_app(test_config=None):
         which will require the question and answer text, 
         category, and difficulty score.
         '''        
-        body = request.get_json() 
-        print(body)      
-        new_question = body.get('question')
-        new_answer = body.get('answer')
-        new_difficulty = body.get('difficulty')
-        new_category = body.get('category')
+        body = request.get_json()               
+        question_new = body.get('question')
+        answer_new = body.get('answer')
+        difficulty_new = body.get('difficulty')
+        category_new = body.get('category')
 
         # ensure all fields have data
-        if ((new_question is None) or (new_answer is None)
-                or (new_difficulty is None) or (new_category is None)):
+        if ((question_new.strip() == "") or (answer_new.strip() == "")
+                or (difficulty_new == None) or (category_new == None)):
             abort(422)
 
         try:
             # create and insert new question
-            question = Question(question=new_question, answer=new_answer,
-                                difficulty=new_difficulty, category=new_category)
+            question = Question(question=question_new, answer=answer_new,
+                                difficulty=difficulty_new, category=category_new)
             question.insert()     
             
             #get all questions and paginate
             selection = Question.query.order_by(Question.id).all()
             current_questions = paginate_questions(request, selection)
             
-            # return data to view
+            #return data to view
             return jsonify({
                 'success': True,
                 'created': question.id,
@@ -103,53 +102,13 @@ def create_app(test_config=None):
             # abort unprocessable if exception
             abort(422)
         
-        #try:
-        #    new_question = body.get('question', None)        
-        #    new_answer = body.get('answer', None)
-        #    new_difficulty = body.get('difficulty',None)
-        #    new_category = body.get('category', None)
-        #    if ((new_question is None) or (new_answer is None)
-        #            or (new_difficulty is None) or (new_category is None)):
-        #        abort(422)
-        #    
-        #    add_question = Question(question=new_question,
-        #                            answer=new_answer,
-        #                            difficulty=new_difficulty,
-        #                            category=new_category)
-        #                            
-        #    add_question.insert()
-        #    selection = Question.query.order_by(Question.id).all()
-        #    
-        #    current_questions = paginate_questions(request,selection)
-        #    return jsonify({
-        #    'success': True,
-        #    'created': add_question.id,
-        #    'question_created': add_question.question,
-        #    'questions': current_questions,
-        #    'total_questions': len(Question.query.all())})
-        #except:
-        #    abort(422)
-        #
         
     @app.route('/categories', methods=['GET'])
     def retrive_categories():
         '''   
         Create an endpoint to handle GET requests 
         for all available categories.
-        '''
-        #categories = Category.query.order_by(Category.id).all()
-        #if len(categories)==0:
-        #    abort(404)
-        #
-        #try:
-        #    formated_categories = [category.format() for category in categories]            
-        #    return jsonify({
-        #    'success': True,
-        #    'category': formated_categories,
-        #    'total_categories': len(Category.query.all())
-        #    })
-        #except:
-        #    abort(422)        
+        '''             
         categories = Category.query.order_by(Category.id).all()
         if len(categories)==0:
             abort(404)
@@ -157,10 +116,11 @@ def create_app(test_config=None):
             categories_dict = {}
             for category in categories:
                 categories_dict[category.id] = category.type
+           
             return jsonify({
-                'success': True,
-                'categories': categories_dict,
-                'total_categories': len(Category.query.all())
+                
+                'categories': categories_dict
+                
                 })
         except:
             abort(404)
@@ -194,10 +154,8 @@ def create_app(test_config=None):
         It should return any questions for whom the search term 
         is a substring of the question.       
         '''
-        body = request.get_json() 
-        print(body,"Printing body")
-        term_to_be_search = body.get('searchTerm', None) 
-        
+        body = request.get_json()        
+        term_to_be_search = body.get('searchTerm', None)         
         search_results  = Question.query.filter(
                 Question.question.ilike(f'%{term_to_be_search}%')).all()
         if len(search_results) == 0:
@@ -207,13 +165,13 @@ def create_app(test_config=None):
             return jsonify({
             'success': True,            
             'questions': searched_question,
-            'total_questions': len(searched_question), 
+            'totalQuestions': len(searched_question), 
             'categories': None
             })
         except:
             abort(422)
     
-    #@app.route('/questions/<int:cat_id>/categories')
+    
     @app.route('/categories/<int:cat_id>/questions')
     def question_based_on_category(cat_id): 
         '''        
@@ -222,21 +180,20 @@ def create_app(test_config=None):
         category_data = Category.query.filter(Category.id == cat_id).all() 
         if len(category_data) == 0:
                 return not_found(404)       
-        ques_cat = Question.query.filter(Question.category == cat_id).all()   
+        ques_cat = Question.query.filter(Question.category == cat_id).all()         
         current_ques_cat = paginate_questions(request, ques_cat)         
         if (len(current_ques_cat) == 0):
             abort(404)
-        try:
-            return  jsonify({
-            'success': True,
+        try:            
+            return  jsonify({            
             'questions': current_ques_cat,
-            'total_questions': len(ques_cat),
-            'categories': cat_id
+            'totalQuestions': len(ques_cat),
+            'currentCategory': category_data[0].type
             })
         except:
             abort(422)
             
-  @app.route('/quizzes',methods=['POST'])
+    @app.route('/quizzes',methods=['POST'])
     def game(): 
         '''        
         Create a POST endpoint to get questions to play the quiz. 
@@ -282,8 +239,10 @@ def create_app(test_config=None):
             else:
                 abort(400)
         except:
-            abort(422)  
+            abort(422)
             
+            
+       
             
     @app.errorhandler(404)
     def not_found(error):
@@ -311,22 +270,6 @@ def create_app(test_config=None):
         
     return app
 
-    
-    
-    
-    
-    
-    
-    
-   
-   
-    
-    '''
-    @TODO: 
-    Create error handlers for all expected errors 
-    including 404 and 422. 
-    '''
-    
     
     
 
