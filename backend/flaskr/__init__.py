@@ -236,7 +236,7 @@ def create_app(test_config=None):
         except:
             abort(422)
             
-    @app.route('/quizzes',methods=['POST'])
+  @app.route('/quizzes',methods=['POST'])
     def game(): 
         '''        
         Create a POST endpoint to get questions to play the quiz. 
@@ -244,26 +244,45 @@ def create_app(test_config=None):
         and return a random questions within the given category, 
         if provided, and that is not one of the previous questions.         
         '''
-        body = request.get_json()        
-        pre_ques = body.get("previous_questions",None)        
-        cat_details = body.get("quiz_category",None)    
-        if not ("previous_questions" in body and  "quiz_category" in body):
-            abort(404)
-        cat_type = cat_details["type"]
-        cat_id = cat_details["id"]
-        question_quiz = Question.query.filter(Question.category == cat_id).filter(Question.id.notin_(pre_ques)).all()
-        current_ques = paginate_questions(request, question_quiz)        
-        if (len(current_ques) == 0):
-            abort(404)
+        body = request.get_json()
+
+        # get the previous questions
+        previous_number = body.get('previous_questions',None)
+
+        # get the category
+        category_string = body.get('quiz_category',None)
         try:
-            return  jsonify({
-            'success': True,
-            'questions': current_ques,
-            'total_questions': len(current_ques),
-            'categories': cat_id
-            })
+        # abort 400 if category or previous questions isn't found
+            if ((category_string is not None) or (previous_number is not None)):
+                if (category_string['id'] != 0):
+                    questions = Question.query.filter_by(category=category_string['id']).all()                  
+                # load questions all questions if "ALL" is selected
+                else:
+                    questions = Question.query.all()                
+                list_question = []
+                for q in questions:
+                    list_question.append(q.id)
+                #print(list_question)
+                questions_not_asked=[]
+                for  q in list(set(list_question)):
+                    if q not in list(set(previous_number)):
+                        questions_not_asked.append(q) 
+                if len(questions_not_asked) == 0:
+                     return jsonify({
+                    'success': True
+                    })
+                else:
+                    random_ques_id = random.choice(questions_not_asked)
+                
+                    question = Question.query.filter(Question.id == random_ques_id).first()     
+                    return jsonify({
+                    'success': True,
+                    'question': question.format()
+                    })
+            else:
+                abort(400)
         except:
-            abort(422)     
+            abort(422)  
             
             
     @app.errorhandler(404)
